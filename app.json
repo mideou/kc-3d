@@ -11,13 +11,15 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "newArchEnabled": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mideou.kc3d"
     },
     "web": {
       "output": "static",
@@ -37,6 +39,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ac9cfb09-1950-48bd-8466-08c4efabd9ea"
+      }
     }
   }
 }
