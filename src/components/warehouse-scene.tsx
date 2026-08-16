@@ -7,16 +7,19 @@ import { BinInfoPanel } from "./bin-info-panel";
 import { BinData } from "@/data/data";
 
 type SceneProps = {
-  selectedBinId: string | null;
+  selectedBinId?: string | null;
+  selectedRackId?: string | null;
+
   onBinSelect: (
     id: string,
     worldPosition: [number, number, number]
-  ) => void
+  ) => void;
 };
-
 export default function WarehouseScene({
   selectedBinId,
+  selectedRackId,
   onBinSelect,
+  
 }: SceneProps) {
   return (
     <>
@@ -28,6 +31,7 @@ export default function WarehouseScene({
       <Warehouse
         selectedBinId={selectedBinId ?? undefined}
         onBinSelect={onBinSelect}
+        selectedRackId = {selectedRackId}
       />
     </>
   );

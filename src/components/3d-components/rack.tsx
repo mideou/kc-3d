@@ -1,8 +1,10 @@
+import { memo, useMemo } from "react";
 import type { BinData } from "../../data/data";
 import { RackMarker } from "./rack-marker";
 import { Shelf } from "./shelf";
 type RackProps = {
   id: string;
+  dimmed?: boolean;
 
   width: number;
   height: number;
@@ -12,13 +14,11 @@ type RackProps = {
   bins: BinData[];
 
   selectedBinId?: string;
-  selected?: boolean,
-onBinSelect?: (
-  id: string,
-  worldPosition: [number, number, number]
-) => void};
+  selected?: boolean;
+  onBinSelect?: (id: string, worldPosition: [number, number, number]) => void;
+};
 
-export function Rack({
+export const Rack = memo(function Rack({
   id,
   width,
   height,
@@ -27,13 +27,14 @@ export function Rack({
   bins,
   selectedBinId,
   onBinSelect,
-  selected
+  dimmed = false,
+  selected,
 }: RackProps) {
+
   const postSize = 0.15;
   const beamSize = 0.12;
 
   const shelfSpacing = height / shelfCount;
-
 
   const binsPerShelf = Math.ceil(bins.length / shelfCount);
 
@@ -43,12 +44,39 @@ export function Rack({
 
   const shelfDepth = depth - 0.05;
 
+  const shelfData = useMemo(() => {
+  return Array.from({ length: shelfCount }, (_, shelfIndex) => {
+    const start = shelfIndex * binsPerShelf;
+
+    return {
+      bins: bins.slice(start, start + binsPerShelf),
+      position: [0, shelfIndex * shelfSpacing, 0] as [
+        number,
+        number,
+        number
+      ],
+    };
+  });
+}, [bins, shelfCount, binsPerShelf, shelfSpacing]);
+
+console.log("RACK RENDER:", id);
+
   return (
     <group>
       {/* ===========label============== */}
 
-     
-       
+      {selected && (
+        <mesh position={[0, height / 2, 0]}>
+          <boxGeometry args={[width + 0.15, height + 0.15, depth + 0.15]} />
+
+          <meshBasicMaterial
+            color="#ff9800"
+            transparent
+            opacity={0.15}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
 
       {/* ================================= */}
       {/* FRONT POSTS */}
@@ -57,17 +85,23 @@ export function Rack({
       <mesh position={[-width / 2, height / 2, depth / 2]}>
         <boxGeometry args={[postSize, height, postSize]} />
 
-        <meshStandardMaterial color={selected
-  ? "#ff8800"
-  : "#4b4b4b"} />
+        <meshStandardMaterial
+          color={selected ? "#a97820" : "#777777"}
+          transparent={false}
+          //depthWrite={!dimmed}
+          //opacity={dimmed ? 0.08 : 1}
+        />
       </mesh>
 
       <mesh position={[width / 2, height / 2, depth / 2]}>
         <boxGeometry args={[postSize, height, postSize]} />
 
-        <meshStandardMaterial color={selected
-  ? "#ff8800"
-  : "#4b4b4b"} />
+        <meshStandardMaterial
+          color={selected ? "#a97820" : "#777777"}
+          //transparent={false}
+          //depthWrite={!dimmed}
+          //opacity={dimmed ? 0.08 : 1}
+        />
       </mesh>
 
       {/* ================================= */}
@@ -77,32 +111,28 @@ export function Rack({
       <mesh position={[-width / 2, height / 2, -depth / 2]}>
         <boxGeometry args={[postSize, height, postSize]} />
 
-        <meshStandardMaterial color={selected
-  ? "#ff8800"
-  : "#4b4b4b"} />
+        <meshStandardMaterial
+          color={selected ? "#a97820" : "#777777"}
+          //transparent={false}
+          //depthWrite={!dimmed}
+          //opacity={dimmed ? 0.08 : 1}
+        />
       </mesh>
 
       <mesh position={[width / 2, height / 2, -depth / 2]}>
         <boxGeometry args={[postSize, height, postSize]} />
 
-        <meshStandardMaterial color={selected
-  ? "#ff8800"
-  : "#4b4b4b"} />
+        <meshStandardMaterial
+          color={selected ? "#a97820" : "#777777"}
+          //transparent={false}
+          //depthWrite={!dimmed}
+          //opacity={dimmed ? 0.08 : 1}
+        />
       </mesh>
 
       {/*----- Marker ----*/}
 
-      {
-        selected && (<RackMarker
-
-        position={[0, 0, 0]}
-
-        height={height}
-        
-        />)
-      }
-
-  
+      {selected && <RackMarker position={[0, 0, 0]} height={height} />}
 
       {/* ================================= */}
       {/* BACK HORIZONTAL BEAMS */}
@@ -117,9 +147,12 @@ export function Rack({
           <mesh key={`back-beam-${index}`} position={[0, y, -depth / 2]}>
             <boxGeometry args={[width, beamSize, beamSize]} />
 
-            <meshStandardMaterial color={selected
-  ? "#ff8800"
-  : "#4b4b4b"} />
+            <meshStandardMaterial
+              color={selected ? "#a97820" : "#777777"}
+              transparent={false}
+              //depthWrite={!dimmed}
+              //opacity={dimmed ? 0.08 : 1}
+            />
           </mesh>
         );
       })}
@@ -128,28 +161,26 @@ export function Rack({
       {/* SHELVES */}
       {/* ================================= */}
 
-      {Array.from({
-        length: shelfCount,
-      }).map((_, shelfIndex) => {
-        const start = shelfIndex * binsPerShelf;
+      {shelfData.map((shelf, shelfIndex) => {
+  const isSelected = shelf.bins.some(
+    (bin) => bin.id === selectedBinId
+  );
 
-        const shelfBins = bins.slice(start, start + binsPerShelf);
-
-        const y = shelfIndex * shelfSpacing;
-
-        return (
-          <Shelf
-            key={`shelf-${shelfIndex}`}
-            bins={shelfBins}
-            position={[0, y, 0]}
-            width={shelfWidth}
-            depth={shelfDepth}
-            binHeight={binHeight}
-            selectedBinId={selectedBinId}
-            onBinSelect={onBinSelect}
-          />
-        );
-      })}
+  return (
+    <Shelf
+      key={`shelf-${shelfIndex}`}
+      bins={shelf.bins}
+      position={shelf.position}
+      width={shelfWidth}
+      depth={shelfDepth}
+      binHeight={binHeight}
+      selectedBinId={isSelected ? selectedBinId : undefined}
+      onBinSelect={onBinSelect}
+      dimmed={dimmed}
+      selected={isSelected}
+    />
+  );
+})}
     </group>
   );
-}
+})

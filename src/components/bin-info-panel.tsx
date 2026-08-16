@@ -1,6 +1,7 @@
 import {
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -8,10 +9,12 @@ import type { BinData } from '../data/data';
 
 type BinInfoPanelProps = {
   bin: BinData | null;
+  onClose: () => void;
 };
 
 export function BinInfoPanel({
   bin,
+  onClose
 }: BinInfoPanelProps) {
   if (!bin) {
     return null;
@@ -19,6 +22,14 @@ export function BinInfoPanel({
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+  style={styles.closeButton}
+  onPress={onClose}
+>
+  <Text style={styles.closeText}>
+    ×
+  </Text>
+</TouchableOpacity>
       <Text style={styles.title}>
         Bin
       </Text>
@@ -95,4 +106,21 @@ const styles = StyleSheet.create({
 
     fontWeight: "600",
   },
+  closeButton: {
+  position: "absolute",
+   right: 6,
+  top: 6,
+
+  width: 36,
+  height: 36,
+
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+closeText: {
+  fontSize: 24,
+  color: "#666",
+  lineHeight: 28,
+},
 });

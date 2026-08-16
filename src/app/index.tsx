@@ -1,96 +1,169 @@
-
-
 import { Canvas } from "@react-three/fiber/native";
 import { CameraControls, Grid, OrbitControls } from "@react-three/drei/native";
 import { OrbitTouchSurface } from "../utils/MultiTouchOrbitBridge";
 import WarehouseScene from "@/components/warehouse-scene";
 import { Alert, View } from "react-native";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { findBinById } from "@/utils/warehouseUtils";
 import { BinInfoPanel } from "@/components/bin-info-panel";
-import { SelectionMarker } from "@/components/3d-components/selectionMarker";
 import { CameraController } from "@/controls/camera-controls";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { WarehouseSearch } from "@/components/search-component";
+import { racks } from "@/data/data";
+import { useBinRegistry } from "@/context/bin-registry";
 
 export default function Index() {
-
   const controlsRef = useRef<any>(null);
 
-  const [
-    selectedBinId,
-    setSelectedBinId,
-  ] = useState<string | null>(null);
+  const [selectedBinId, setSelectedBinId] = useState<string | null>(null);
+  const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
 
-  const [selectedBinPosition, setSelectedBinPosition] =
-  useState<[number, number, number] | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const { getBinPosition } = useBinRegistry();
 
-  const [focusTarget, setFocusTarget] =
-  useState<[number, number, number] | null>(null);
+  const searchResults = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
 
-   const selectedBin = useMemo(
-    () =>
-      selectedBinId
-        ? findBinById(selectedBinId)
-        : null,
-    [selectedBinId]
+    if (!query) {
+      return [];
+    }
+
+    const results = [];
+
+    for (const rack of racks) {
+      for (const bin of rack.bins) {
+        const matches =
+          bin.id.toLowerCase().includes(query) ||
+          bin.label.toLowerCase().includes(query) ||
+          bin.product.toLowerCase().includes(query);
+
+        if (matches) {
+          results.push({
+            bin,
+            rackId: rack.id,
+          });
+        }
+      }
+    }
+
+    return results;
+  }, [searchText]);
+
+  const [selectedBinPosition, setSelectedBinPosition] = useState<
+    [number, number, number] | null
+  >(null);
+
+  const [focusTarget, setFocusTarget] = useState<
+    [number, number, number] | null
+  >(null);
+
+  const [showSearchResults, setShowSearchResults] = useState(true);
+
+  const [focusRotation, setFocusRotation] = useState<
+    [number, number, number] | null
+  >(null);
+
+  const selectedBin = useMemo(
+    () => (selectedBinId ? findBinById(selectedBinId) : null),
+    [selectedBinId],
   );
 
-  const handleBinSelect = (
-  binId: string,
-  worldPosition: [number, number, number]
-) => {
-  setSelectedBinId(binId);
-  setSelectedBinPosition(worldPosition);
-    setFocusTarget(worldPosition);
+  const selectBin = useCallback(
+    (binId: string) => {
+      const rack = racks.find((rack) =>
+        rack.bins.some((bin) => bin.id === binId),
+      );
 
+      if (!rack) {
+        return;
+      }
 
+      const position = getBinPosition(binId);
 
-  console.log(
-    "Selected bin:",
-    binId
+      if (!position) {
+        return;
+      }
+
+      setSelectedBinId(binId);
+      setSelectedRackId(rack.id);
+      setSelectedBinPosition(position);
+
+      setFocusTarget(rack.position);
+      setFocusRotation(rack.rotation);
+    },
+    [getBinPosition],
   );
 
-  console.log(
-    "World position:",
-    worldPosition
+  const handleBinSelect = useCallback(
+    (binId: string, _worldPosition: [number, number, number]) => {
+      selectBin(binId);
+    },
+    [selectBin],
   );
-};
 
- 
+  const clearSelection = useCallback(() => {
+    setSelectedBinId(null);
+    setSelectedRackId(null);
+    setSelectedBinPosition(null);
+    setFocusTarget(null);
+    setFocusRotation(null);
+  }, []);
 
   return (
-    <View style={{flex:1}}>
+    <View style={{ flex: 1 }}>
+      <GestureHandlerRootView>
+        <OrbitTouchSurface>
+          {(domElement) => (
+            <Canvas
+              style={{ height: "100%", width: "100%" }}
+              camera={{
+                position: [10, 66, 10],
+                fov: 50,
+              }}
+              frameloop={"demand"}
+            >
+              <CameraController
+                distance={6}
+                controlsRef={controlsRef}
+                focusTarget={focusTarget}
+                focusRotation={focusRotation}
+              />
 
-    
-    <OrbitTouchSurface>
-      {(domElement) => (
-        <Canvas style={{ height: "100%", width: "100%" }} frameloop="demand">
+              <WarehouseScene
+                selectedBinId={selectedBinId}
+                selectedRackId={selectedRackId}
+                onBinSelect={handleBinSelect}
+              />
 
-          <CameraController distance={6} controlsRef={controlsRef} focusTarget={focusTarget}  />
+              <axesHelper />
+              <Grid infiniteGrid fadeDistance={50} />
 
-        
-
-          <WarehouseScene selectedBinId={selectedBinId} onBinSelect={handleBinSelect}/>
-
-          {selectedBinPosition && (
-            <SelectionMarker position={selectedBinPosition}/>
+              <OrbitControls
+                enableDamping
+                dampingFactor={0.6}
+                ref={controlsRef}
+                domElement={domElement}
+                maxPolarAngle={Math.PI / 2 - 0.1}
+                minPolarAngle={Math.PI / 3}
+              />
+            </Canvas>
           )}
-          
+        </OrbitTouchSurface>
+      </GestureHandlerRootView>
 
-          <axesHelper />
-          <Grid infiniteGrid fadeDistance={50}/>
-
-          <OrbitControls ref={controlsRef}  domElement={domElement} maxPolarAngle={Math.PI/2 - 0.1} minPolarAngle={Math.PI/3} />
-        </Canvas>
-
-        
-      )}
-      
-    </OrbitTouchSurface>
-
-    <BinInfoPanel
-        bin={selectedBin ?? null}
+      <WarehouseSearch
+        value={searchText}
+        onChangeText={(text) => {
+          (setShowSearchResults(true), setSearchText(text));
+        }}
+        results={showSearchResults ? searchResults : []}
+        onResultPress={(binId) => {
+          selectBin(binId);
+          setShowSearchResults(false);
+        }}
       />
 
+      <BinInfoPanel bin={selectedBin ?? null} onClose={clearSelection} />
     </View>
   );
 }

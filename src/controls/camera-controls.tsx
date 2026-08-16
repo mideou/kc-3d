@@ -1,97 +1,101 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber/native";
 import { Vector3 } from "three";
-
+import * as THREE from 'three'
 type CameraControllerProps = {
   focusTarget?: [number, number, number] | null;
   controlsRef: React.MutableRefObject<any>;
   distance?: number;
+  focusRotation: [number, number, number] | null;
 };
 
 export function CameraController({
   focusTarget,
   controlsRef,
   distance = 5,
+  focusRotation,
 }: CameraControllerProps) {
   const { camera } = useThree();
 
-  const targetPosition = useRef<Vector3 | null>(null);
-  const targetLookAt = useRef<Vector3 | null>(null);
+  const targetPosition = useRef<THREE.Vector3 | null>(null);
+  const targetLookAt = useRef<THREE.Vector3 | null>(null);
+
+  const initialTarget = useRef(
+    new THREE.Vector3(0, 0, 0)
+  );
 
   useEffect(() => {
     if (!focusTarget) {
+      targetPosition.current = null;
+      targetLookAt.current = initialTarget.current.clone();
       return;
     }
 
-    const target = new Vector3(
+    const target = new THREE.Vector3(
       focusTarget[0],
       focusTarget[1],
       focusTarget[2]
     );
 
-    const offset = new Vector3(
+    const offset = new THREE.Vector3(
       distance,
-      distance * 0.6,
+      distance * 5,
       distance
     );
+
+    if (focusRotation) {
+      const rotation = new THREE.Euler(
+        focusRotation[0],
+        focusRotation[1],
+        focusRotation[2]
+      );
+
+      offset.applyEuler(rotation);
+    }
 
     targetLookAt.current = target;
 
     targetPosition.current = target
       .clone()
       .add(offset);
+  }, [focusTarget, distance, focusRotation]);
 
-  }, [focusTarget, distance]);
+  useFrame(() => {
+    if (
+      !targetPosition.current ||
+      !targetLookAt.current ||
+      !controlsRef.current
+    ) {
+      return;
+    }
 
- useFrame(() => {
-  if (
-    !targetPosition.current ||
-    !targetLookAt.current ||
-    !controlsRef.current
-  ) {
-    return;
-  }
+    const position = targetPosition.current;
+    const target = targetLookAt.current;
+    const controls = controlsRef.current;
 
-  const position = targetPosition.current;
-  const target = targetLookAt.current;
-
-  const positionDistance =
-    camera.position.distanceTo(position);
-
-  const targetDistance =
-    controlsRef.current.target.distanceTo(target);
-
-  if (
-    positionDistance < 0.01 &&
-    targetDistance < 0.01
-  ) {
-    camera.position.copy(position);
-
-    controlsRef.current.target.copy(target);
-
-    controlsRef.current.update();
-
-    targetPosition.current = null;
-    targetLookAt.current = null;
+    //camera.position.lerp(position, 0.08);
+    
+    controls.target.lerp(target, 0.08);
 
 
-    return;
-  }
+    controls.update();
 
-  camera.position.lerp(
-    position,
-    0.08
-  );
+    /*const positionDone =
+      camera.position.distanceToSquared(position) < 0.0001;
 
-  controlsRef.current.target.lerp(
-    target,
-    0.08
-  );
+    const targetDone =
+      controls.target.distanceToSquared(target) < 0.0001;
 
-  controlsRef.current.update();
-});
+    if (positionDone && targetDone) {
+      camera.position.copy(position);
+      controls.target.copy(target);
 
+      controls.update();
 
+      targetPosition.current = null;
+      targetLookAt.current = null;
+    }*/
+  });
 
   return null;
 }

@@ -1,61 +1,49 @@
-import { aislePositions, racks } from "@/data/data";
+import { racks } from "@/data/data";
 import { Rack } from "./rack";
-import { Aisle } from "./aisle";
-import { RackMarker } from "./rack-marker";
 
 type WarehouseProps = {
   selectedBinId?: string;
+  selectedRackId?: string | null;
 
-onBinSelect: (
-    id: string,
-    worldPosition: [number, number, number]
-  ) => void};
+  onBinSelect: (id: string, worldPosition: [number, number, number]) => void;
+};
 
-export function Warehouse({ selectedBinId, onBinSelect }: WarehouseProps) {
-
-
-  
+export function Warehouse({
+  selectedBinId,
+  onBinSelect,
+  selectedRackId,
+}: WarehouseProps) {
+  const hasSelection = selectedRackId != null;
 
   return (
-<group>
-
-
+    <group>
       {racks.map((rack) => {
+        const isSelected = selectedRackId === rack.id;
 
-        const isSelected = rack.bins.some(
-    (bin) => bin.id === selectedBinId
-  );
-        
-       return <group
-          key={rack.id}
-          position={rack.position}
-          rotation={rack.rotation}
+        const rackSelectedBinId =
+  isSelected ? selectedBinId : undefined;
 
-        >
-          <Rack
-
-          id={rack.id}
-            width={rack.width}
-            height={rack.height}
-            depth={rack.depth}
-
-            shelfCount={
-              rack.shelfCount
-            }
-            bins={rack.bins}
-            selectedBinId={
-              selectedBinId
-            }
-            onBinSelect={
-              onBinSelect
-            }
-
-            selected = {isSelected}
-          />
-
-          
-   
-        </group>
+        const isDimmed = hasSelection && !isSelected;
+        return (
+          <group
+            key={rack.id}
+            position={rack.position}
+            rotation={rack.rotation}
+          >
+            <Rack
+              id={rack.id}
+              width={rack.width}
+              height={rack.height}
+              depth={rack.depth}
+              shelfCount={rack.shelfCount}
+              bins={rack.bins}
+              selectedBinId={rackSelectedBinId}
+              onBinSelect={onBinSelect}
+              selected={isSelected}
+              dimmed={isDimmed}
+            />
+          </group>
+        );
       })}
     </group>
   );

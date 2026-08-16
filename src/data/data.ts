@@ -1,5 +1,15 @@
+type BinType =
+  | "small"
+  | "slim"
+  | "normal";
+
+
 export type BinData = {
   id: string;
+
+  type: BinType,
+
+  
   
   label: string;
   product: string;
@@ -38,6 +48,7 @@ function createBins(
 
       bins.push({
         id,
+        type: shelf === 1 ? 'small' : 'normal',
         label: `S${shelf + 1}-B${column + 1}`,
         product: `Product ${column + 1}`,
       });
@@ -75,6 +86,22 @@ export const aislePositions = Array.from(
   }
 );
 
+export function findRackByBinId(
+  binId: string
+): RackData | null {
+  for (const rack of racks) {
+    if (
+      rack.bins.some(
+        (bin) => bin.id === binId
+      )
+    ) {
+      return rack;
+    }
+  }
+
+  return null;
+}
+
 
 
 export const racks: RackData[] = [];
@@ -94,14 +121,14 @@ for (let row = 0; row < RACK_ROWS; row++) {
           (RACKS_PER_ROW - 1) / 2) *
           RACK_SPACING_X,
 
-        0,
+        0.2,
 
         (row -
           (RACK_ROWS - 1) / 2) *
           RACK_SPACING_Z,
       ],
 
-      rotation: [0, 0, 0],
+      rotation: [0, Math.PI/2, 0],
 
       width: 4,
       height: 4,
@@ -116,4 +143,6 @@ for (let row = 0; row < RACK_ROWS; row++) {
       ),
     });
   }
+
+  
 }
