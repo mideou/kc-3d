@@ -2,7 +2,157 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber/native";
 import { Vector3 } from "three";
 import * as THREE from 'three'
+
+
 type CameraControllerProps = {
+  focusTarget?: [number, number, number] | null;
+  controlsRef: React.MutableRefObject<any>;
+  distance?: number;
+  focusRotation: [number, number, number] | null;
+};
+
+export function CameraController({
+  focusTarget,
+  controlsRef,
+  distance = 5,
+  focusRotation,
+}: CameraControllerProps) {
+  const { camera } = useThree();
+
+  // --------------------------------
+  // Reusable objects
+  // --------------------------------
+
+  const target = useRef(
+    new THREE.Vector3()
+  );
+
+  const targetPosition = useRef(
+    new THREE.Vector3()
+  );
+
+  const offset = useRef(
+    new THREE.Vector3()
+  );
+
+  const rotation = useRef(
+    new THREE.Euler()
+  );
+
+  // --------------------------------
+  // Animation state
+  // --------------------------------
+
+  const animating = useRef(false);
+
+  // --------------------------------
+  // Animation speed
+  // --------------------------------
+
+  const LERP = 0.18;
+
+  // --------------------------------
+  // Update target
+  // --------------------------------
+
+  useEffect(() => {
+    if (!focusTarget) {
+      animating.current = false;
+      return;
+    }
+
+    // Target
+    target.current.set(
+      focusTarget[0],
+      focusTarget[1],
+      focusTarget[2]
+    );
+
+    // Base offset
+    offset.current.set(
+      distance,
+      distance * 5,
+      distance
+    );
+
+    // Apply rack rotation
+    if (focusRotation) {
+      rotation.current.set(
+        focusRotation[0],
+        focusRotation[1],
+        focusRotation[2]
+      );
+
+      offset.current.applyEuler(
+        rotation.current
+      );
+    }
+
+    // Calculate desired camera position
+    targetPosition.current
+      .copy(target.current)
+      .add(offset.current);
+
+    // Start animation
+    animating.current = true;
+
+  }, [
+    focusTarget,
+    distance,
+    focusRotation,
+  ]);
+
+  // --------------------------------
+  // Animation
+  // --------------------------------
+
+  useFrame(() => {
+    if (!animating.current) {
+      return;
+    }
+
+    const controls = controlsRef.current;
+
+    if (!controls) {
+      return;
+    }
+
+    // Move OrbitControls target
+    controls.target.lerp(
+      target.current,
+      LERP
+    );
+
+    controls.update();
+
+    /*
+     * We intentionally DO NOT move the
+     * camera here.
+     *
+     * OrbitControls is responsible for
+     * the camera position.
+     */
+
+    // Stop when target is close enough
+    /*if (
+      controls.target.distanceToSquared(
+        target.current
+      ) < 0.0001
+    ) {
+      controls.target.copy(
+        target.current
+      );
+
+      animating.current = false;
+    }*/
+  });
+
+  return null;
+}
+
+
+
+ /*type CameraControllerProps = {
   focusTarget?: [number, number, number] | null;
   controlsRef: React.MutableRefObject<any>;
   distance?: number;
@@ -75,12 +225,12 @@ export function CameraController({
 
     //camera.position.lerp(position, 0.08);
     
-    controls.target.lerp(target, 0.08);
+    controls.target.lerp(target, 0.18);
 
 
-    controls.update();
+    //controls.update();
 
-    /*const positionDone =
+    const positionDone =
       camera.position.distanceToSquared(position) < 0.0001;
 
     const targetDone =
@@ -94,8 +244,8 @@ export function CameraController({
 
       targetPosition.current = null;
       targetLookAt.current = null;
-    }*/
+    }
   });
 
   return null;
-}
+} */

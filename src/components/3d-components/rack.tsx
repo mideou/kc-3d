@@ -12,6 +12,7 @@ type RackProps = {
 
   shelfCount: number;
   bins: BinData[];
+  interactive?: boolean;
 
   selectedBinId?: string;
   selected?: boolean;
@@ -178,6 +179,7 @@ console.log("RACK RENDER:", id);
       onBinSelect={onBinSelect}
       dimmed={dimmed}
       selected={isSelected}
+
     />
   );
 })}

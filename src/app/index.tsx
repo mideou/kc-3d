@@ -90,6 +90,7 @@ export default function Index() {
 
       setFocusTarget(rack.position);
       setFocusRotation(rack.rotation);
+      
     },
     [getBinPosition],
   );
@@ -120,14 +121,10 @@ export default function Index() {
                 position: [10, 66, 10],
                 fov: 50,
               }}
-              frameloop={"demand"}
+
+              frameloop={'demand'}
             >
-              <CameraController
-                distance={6}
-                controlsRef={controlsRef}
-                focusTarget={focusTarget}
-                focusRotation={focusRotation}
-              />
+              
 
               <WarehouseScene
                 selectedBinId={selectedBinId}
@@ -140,11 +137,17 @@ export default function Index() {
 
               <OrbitControls
                 enableDamping
-                dampingFactor={0.6}
+                dampingFactor={0.2}
                 ref={controlsRef}
                 domElement={domElement}
                 maxPolarAngle={Math.PI / 2 - 0.1}
                 minPolarAngle={Math.PI / 3}
+              />
+              <CameraController
+                distance={20}
+                controlsRef={controlsRef}
+                focusTarget={focusTarget}
+                focusRotation={focusRotation}
               />
             </Canvas>
           )}

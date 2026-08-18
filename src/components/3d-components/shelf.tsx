@@ -26,7 +26,9 @@ export const Shelf = memo(function Shelf({
   binHeight,
   selected = false,
   selectedBinId,
+
   dimmed = false,
+  
   onBinSelect,
 }: ShelfProps) {
 
@@ -111,6 +113,7 @@ export const Shelf = memo(function Shelf({
     selected={selectedBinId === bin.id}
     onSelect={onBinSelect}
     dimmed={dimmed}
+
   />
 ))}
       </group>
