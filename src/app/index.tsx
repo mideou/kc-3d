@@ -1,8 +1,8 @@
 import { Canvas } from "@react-three/fiber/native";
-import { CameraControls, Grid, OrbitControls } from "@react-three/drei/native";
+import {  Grid, OrbitControls } from "@react-three/drei/native";
 import { OrbitTouchSurface } from "../utils/MultiTouchOrbitBridge";
 import WarehouseScene from "@/components/warehouse-scene";
-import { Alert, View } from "react-native";
+import {  View } from "react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { findBinById } from "@/utils/warehouseUtils";
 import { BinInfoPanel } from "@/components/bin-info-panel";

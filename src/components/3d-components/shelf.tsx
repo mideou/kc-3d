@@ -72,20 +72,7 @@ export const Shelf = memo(function Shelf({
     });
   }, [bins, totalBinWidth, binHeight]);
 
-  useFrame((_, delta) => {
-    if (!shelfRef.current) return;
 
-    const targetZ = selected ? 0.2 : 0;
-
-    animatedZ.current = THREE.MathUtils.damp(
-      animatedZ.current,
-      targetZ,
-      8,
-      delta,
-    );
-
-    shelfRef.current.position.z = animatedZ.current;
-  });
 
 
   return (

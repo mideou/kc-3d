@@ -3,7 +3,6 @@ import { useFrame, useThree } from "@react-three/fiber/native";
 import { Vector3 } from "three";
 import * as THREE from 'three'
 
-
 type CameraControllerProps = {
   focusTarget?: [number, number, number] | null;
   controlsRef: React.MutableRefObject<any>;
@@ -17,43 +16,16 @@ export function CameraController({
   distance = 5,
   focusRotation,
 }: CameraControllerProps) {
-  const { camera } = useThree();
-
-  // --------------------------------
-  // Reusable objects
-  // --------------------------------
-
-  const target = useRef(
-    new THREE.Vector3()
-  );
-
-  const targetPosition = useRef(
-    new THREE.Vector3()
-  );
-
-  const offset = useRef(
-    new THREE.Vector3()
-  );
-
-  const rotation = useRef(
-    new THREE.Euler()
-  );
-
-  // --------------------------------
-  // Animation state
-  // --------------------------------
-
+  const target = useRef(new THREE.Vector3());
+  const offset = useRef(new THREE.Vector3());
+  const rotation = useRef(new THREE.Euler());
   const animating = useRef(false);
 
-  // --------------------------------
-  // Animation speed
-  // --------------------------------
+  const invalidate = useThree((s) => s.invalidate); // <-- add
 
-  const LERP = 0.18;
-
-  // --------------------------------
-  // Update target
-  // --------------------------------
+  const DECAY_RATE = 12;
+  const EPSILON_SQ = 0.0005;
+  const MAX_DELTA = 0.05; // <-- clamp to ~50ms (avoids snap after idle)
 
   useEffect(() => {
     if (!focusTarget) {
@@ -61,95 +33,44 @@ export function CameraController({
       return;
     }
 
-    // Target
-    target.current.set(
-      focusTarget[0],
-      focusTarget[1],
-      focusTarget[2]
-    );
+    target.current.set(focusTarget[0], focusTarget[1], focusTarget[2]);
+    offset.current.set(distance, distance * 5, distance);
 
-    // Base offset
-    offset.current.set(
-      distance,
-      distance * 5,
-      distance
-    );
-
-    // Apply rack rotation
     if (focusRotation) {
-      rotation.current.set(
-        focusRotation[0],
-        focusRotation[1],
-        focusRotation[2]
-      );
-
-      offset.current.applyEuler(
-        rotation.current
-      );
+      rotation.current.set(focusRotation[0], focusRotation[1], focusRotation[2]);
+      offset.current.applyEuler(rotation.current);
     }
 
-    // Calculate desired camera position
-    targetPosition.current
-      .copy(target.current)
-      .add(offset.current);
-
-    // Start animation
     animating.current = true;
+    invalidate(); // <-- force at least one frame to kick off the loop
+  }, [focusTarget, distance, focusRotation, invalidate]);
 
-  }, [
-    focusTarget,
-    distance,
-    focusRotation,
-  ]);
-
-  // --------------------------------
-  // Animation
-  // --------------------------------
-
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!animating.current) {
       return;
     }
 
     const controls = controlsRef.current;
-
     if (!controls) {
       return;
     }
 
-    // Move OrbitControls target
-    controls.target.lerp(
-      target.current,
-      LERP
-    );
+    const dt = Math.min(delta, MAX_DELTA); // <-- clamp
+    const decay = 1 - Math.exp(-DECAY_RATE * dt);
 
+    controls.target.lerp(target.current, decay);
     controls.update();
 
-    /*
-     * We intentionally DO NOT move the
-     * camera here.
-     *
-     * OrbitControls is responsible for
-     * the camera position.
-     */
-
-    // Stop when target is close enough
-    /*if (
-      controls.target.distanceToSquared(
-        target.current
-      ) < 0.0001
-    ) {
-      controls.target.copy(
-        target.current
-      );
-
+    if (controls.target.distanceToSquared(target.current) < EPSILON_SQ) {
+      controls.target.copy(target.current);
       animating.current = false;
-    }*/
+    } else {
+      invalidate(); // <-- keep the loop alive explicitly, don't rely solely on controls' own 'change' invalidate
+    }
   });
 
   return null;
 }
-
 
 
  /*type CameraControllerProps = {

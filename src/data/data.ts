@@ -69,7 +69,7 @@ export const WAREHOUSE = {
 };
 
 
-const RACK_ROWS = 3;
+const RACK_ROWS = 8;
 const RACKS_PER_ROW = 4;
 
 const RACK_SPACING_X = 4;
@@ -134,7 +134,7 @@ for (let row = 0; row < RACK_ROWS; row++) {
       height: 4,
       depth: 1.2,
 
-      shelfCount: 4,
+      shelfCount: 6,
 
       bins: createBins(
         id,
