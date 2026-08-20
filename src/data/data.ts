@@ -138,8 +138,8 @@ for (let row = 0; row < RACK_ROWS; row++) {
 
       bins: createBins(
         id,
-        4,
-        3
+        6,
+        5
       ),
     });
   }

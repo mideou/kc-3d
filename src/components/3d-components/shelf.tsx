@@ -4,7 +4,6 @@ import { BIN_DIMENSIONS } from "@/ressources/bin-recources";
 import { useFrame } from "@react-three/fiber/native";
 import { memo, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-
 type ShelfProps = {
   bins: BinData[];
   position: [number, number, number];
@@ -28,36 +27,30 @@ export const Shelf = memo(function Shelf({
   selectedBinId,
 
   dimmed = false,
-  
+
   onBinSelect,
 }: ShelfProps) {
-
-
   const shelfRef = useRef<THREE.Group>(null);
-  const animatedZ = useRef(0);
   const shelfThickness = 0.12;
 
-  const totalBinWidth = bins.reduce((total, bin) => {
-    return total + BIN_DIMENSIONS[bin.type].width;
-  }, 0);
+  // --------------------------------
+  // Bin layout — computed once, total + positions together
+  // (previously totalBinWidth/currentX were computed twice:
+  // once outside useMemo and discarded, once inside)
+  // --------------------------------
 
-  if (totalBinWidth > width) {
-    console.warn(
-      `Shelf is too narrow for ${bins.length} bins. ` +
-        `Required: ${totalBinWidth}, available: ${width}`,
+  const { binPositions, totalBinWidth } = useMemo(() => {
+    const total = bins.reduce(
+      (sum, bin) => sum + BIN_DIMENSIONS[bin.type].width,
+      0
     );
-  }
 
-  let currentX = -totalBinWidth / 2;
+    let currentX = -total / 2;
 
-
-    const binPositions = useMemo(() => {
-    let currentX = -totalBinWidth / 2;
-
-    return bins.map((bin) => {
+    const positions = bins.map((bin) => {
       const binWidth = BIN_DIMENSIONS[bin.type].width;
 
-      const position: [number, number, number] = [
+      const pos: [number, number, number] = [
         currentX + binWidth / 2,
         binHeight / 2 + shelfThickness / 2,
         0.03,
@@ -65,15 +58,25 @@ export const Shelf = memo(function Shelf({
 
       currentX += binWidth;
 
-      return {
-        bin,
-        position,
-      };
+      return { bin, position: pos };
     });
-  }, [bins, totalBinWidth, binHeight]);
 
+    return { binPositions: positions, totalBinWidth: total };
+  }, [bins, binHeight]);
 
+  // --------------------------------
+  // Overflow warning — only logs when the condition actually
+  // changes, not on every render
+  // --------------------------------
 
+  useEffect(() => {
+    if (totalBinWidth > width) {
+      console.warn(
+        `Shelf is too narrow for ${bins.length} bins. ` +
+          `Required: ${totalBinWidth}, available: ${width}`
+      );
+    }
+  }, [totalBinWidth, width, bins.length]);
 
   return (
     <group position={position}>
@@ -91,19 +94,18 @@ export const Shelf = memo(function Shelf({
         </mesh>
 
         {/* Bins */}
-       {binPositions.map(({ bin, position }) => (
-  <Bin
-    key={bin.id}
-    id={bin.id}
-    type={bin.type}
-    position={position}
-    selected={selectedBinId === bin.id}
-    onSelect={onBinSelect}
-    dimmed={dimmed}
-
-  />
-))}
+        {binPositions.map(({ bin, position }) => (
+          <Bin
+            key={bin.id}
+            id={bin.id}
+            type={bin.type}
+            position={position}
+            selected={selectedBinId === bin.id}
+            onSelect={onBinSelect}
+            dimmed={dimmed}
+          />
+        ))}
       </group>
     </group>
   );
-})
+});

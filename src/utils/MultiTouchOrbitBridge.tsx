@@ -135,43 +135,70 @@ export function OrbitTouchSurface({ children, style, enabled = true }: OrbitTouc
     [domElement]
   );
 
+  // --------------------------------
+  // Coalesced move dispatch: native touch ticks write into this ref
+  // (cheap), a rAF loop flushes the latest position per pointer into
+  // OrbitControls at most once per rendered frame.
+  // --------------------------------
+
+  const pendingMoves = useRef<Map<number, TouchData>>(new Map());
+  const rafId = useRef<number | null>(null);
+
+  const flushMoves = useCallback(() => {
+    if (pendingMoves.current.size > 0) {
+      pendingMoves.current.forEach((t) => send('pointermove', t));
+      pendingMoves.current.clear();
+    }
+    rafId.current = requestAnimationFrame(flushMoves);
+  }, [send]);
+
+  const startFlushLoop = useCallback(() => {
+    if (rafId.current === null) {
+      rafId.current = requestAnimationFrame(flushMoves);
+    }
+  }, [flushMoves]);
+
+  const stopFlushLoop = useCallback(() => {
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+    pendingMoves.current.clear();
+  }, []);
+
   const gesture = useMemo(
     () =>
       Gesture.Manual()
         .onTouchesDown((e: GestureTouchEvent, manager: GestureStateManager) => {
-          // e.numberOfTouches === e.changedTouches.length only on the very
-          // first finger(s) of a brand new gesture (0 -> N touches) - so
-          // begin/activate run exactly once per gesture, not once per
-          // finger, matching RNGH's intended state-machine usage instead of
-          // calling activate() repeatedly as more fingers land.
           if (e.numberOfTouches === e.changedTouches.length) {
             manager.begin();
             manager.activate();
+            startFlushLoop();
           }
           e.changedTouches.forEach((t) => send('pointerdown', t));
         })
         .onTouchesMove((e: GestureTouchEvent) => {
-          e.changedTouches.forEach((t) => send('pointermove', t));
+          // Cheap: just record latest position per finger, don't dispatch yet
+          e.changedTouches.forEach((t) => pendingMoves.current.set(t.id, t));
         })
         .onTouchesUp((e: GestureTouchEvent, manager: GestureStateManager) => {
           e.changedTouches.forEach((t) => send('pointerup', t));
-          // Only end the gesture once every finger is actually up, so
-          // lifting one of two fingers doesn't tear down tracking for the
-          // other.
           if (e.numberOfTouches === 0) {
             manager.end();
+            stopFlushLoop();
           }
         })
         .onTouchesCancelled((e: GestureTouchEvent, manager: GestureStateManager) => {
           e.changedTouches.forEach((t) => send('pointercancel', t));
           if (e.numberOfTouches === 0) {
             manager.fail();
+            stopFlushLoop();
           }
         })
         .runOnJS(true)
         .shouldCancelWhenOutside(false)
         .enabled(enabled),
-    [send, enabled]
+    [send, enabled, startFlushLoop, stopFlushLoop]
   );
 
   const handleLayout = useCallback(

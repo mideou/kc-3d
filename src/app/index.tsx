@@ -12,13 +12,30 @@ import { WarehouseSearch } from "@/components/search-component";
 import { racks } from "@/data/data";
 import { useBinRegistry } from "@/context/bin-registry";
 
+type Selection = {
+  binId: string;
+  rackId: string;
+  binPosition: [number, number, number];
+  focusTarget: [number, number, number];
+  focusRotation: [number, number, number];
+};
+
+const binToRackMap = new Map(
+  racks.flatMap((rack) => rack.bins.map((bin) => [bin.id, rack])),
+);
+
+const flatBinList = racks.flatMap((rack) =>
+  rack.bins.map((bin) => ({ bin, rackId: rack.id })),
+);
+
 export default function Index() {
   const controlsRef = useRef<any>(null);
 
-  const [selectedBinId, setSelectedBinId] = useState<string | null>(null);
-  const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
 
   const [searchText, setSearchText] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(true);
+
   const { getBinPosition } = useBinRegistry();
 
   const searchResults = useMemo(() => {
@@ -28,51 +45,22 @@ export default function Index() {
       return [];
     }
 
-    const results = [];
-
-    for (const rack of racks) {
-      for (const bin of rack.bins) {
-        const matches =
-          bin.id.toLowerCase().includes(query) ||
-          bin.label.toLowerCase().includes(query) ||
-          bin.product.toLowerCase().includes(query);
-
-        if (matches) {
-          results.push({
-            bin,
-            rackId: rack.id,
-          });
-        }
-      }
-    }
-
-    return results;
+    return flatBinList.filter(
+      ({ bin }) =>
+        bin.id.toLowerCase().includes(query) ||
+        bin.label.toLowerCase().includes(query) ||
+        bin.product.toLowerCase().includes(query),
+    );
   }, [searchText]);
 
-  const [selectedBinPosition, setSelectedBinPosition] = useState<
-    [number, number, number] | null
-  >(null);
-
-  const [focusTarget, setFocusTarget] = useState<
-    [number, number, number] | null
-  >(null);
-
-  const [showSearchResults, setShowSearchResults] = useState(true);
-
-  const [focusRotation, setFocusRotation] = useState<
-    [number, number, number] | null
-  >(null);
-
   const selectedBin = useMemo(
-    () => (selectedBinId ? findBinById(selectedBinId) : null),
-    [selectedBinId],
+    () => (selection ? findBinById(selection.binId) : null),
+    [selection],
   );
 
   const selectBin = useCallback(
     (binId: string) => {
-      const rack = racks.find((rack) =>
-        rack.bins.some((bin) => bin.id === binId),
-      );
+      const rack = binToRackMap.get(binId);
 
       if (!rack) {
         return;
@@ -84,13 +72,13 @@ export default function Index() {
         return;
       }
 
-      setSelectedBinId(binId);
-      setSelectedRackId(rack.id);
-      setSelectedBinPosition(position);
-
-      setFocusTarget(rack.position);
-      setFocusRotation(rack.rotation);
-      
+      setSelection({
+        binId,
+        rackId: rack.id,
+        binPosition: position,
+        focusTarget: rack.position,
+        focusRotation: rack.rotation,
+      });
     },
     [getBinPosition],
   );
@@ -103,11 +91,7 @@ export default function Index() {
   );
 
   const clearSelection = useCallback(() => {
-    setSelectedBinId(null);
-    setSelectedRackId(null);
-    setSelectedBinPosition(null);
-    setFocusTarget(null);
-    setFocusRotation(null);
+    setSelection(null);
   }, []);
 
   return (
@@ -121,14 +105,11 @@ export default function Index() {
                 position: [10, 66, 10],
                 fov: 50,
               }}
-
               frameloop={'demand'}
             >
-              
-
               <WarehouseScene
-                selectedBinId={selectedBinId}
-                selectedRackId={selectedRackId}
+                selectedBinId={selection?.binId ?? null}
+                selectedRackId={selection?.rackId ?? null}
                 onBinSelect={handleBinSelect}
               />
 
@@ -136,8 +117,7 @@ export default function Index() {
               <Grid infiniteGrid fadeDistance={50} />
 
               <OrbitControls
-                enableDamping
-                dampingFactor={0.2}
+              enableDamping={false}
                 ref={controlsRef}
                 domElement={domElement}
                 maxPolarAngle={Math.PI / 2 - 0.1}
@@ -146,8 +126,8 @@ export default function Index() {
               <CameraController
                 distance={20}
                 controlsRef={controlsRef}
-                focusTarget={focusTarget}
-                focusRotation={focusRotation}
+                focusTarget={selection?.focusTarget ?? null}
+                focusRotation={selection?.focusRotation ?? null}
               />
             </Canvas>
           )}
@@ -157,7 +137,8 @@ export default function Index() {
       <WarehouseSearch
         value={searchText}
         onChangeText={(text) => {
-          (setShowSearchResults(true), setSearchText(text));
+          setShowSearchResults(true);
+          setSearchText(text);
         }}
         results={showSearchResults ? searchResults : []}
         onResultPress={(binId) => {

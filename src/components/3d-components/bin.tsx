@@ -1,4 +1,4 @@
-import type { ThreeEvent } from "@react-three/fiber/native";
+import { useThree, type ThreeEvent } from "@react-three/fiber/native";
 import { Vector3 } from "three";
 import { memo, useEffect, useRef } from "react";
 import * as THREE from "three";
@@ -8,8 +8,7 @@ import {
   smallBinGeometry,
 } from "@/ressources/bin-recources";
 import { useBinRegistry } from "@/context/bin-registry";
-
-type BinType = "small" | "slim" | "normal";
+export type BinType = "small" | "slim" | "normal";
 
 type BinProps = {
   dimmed?: boolean;
@@ -29,6 +28,9 @@ type BinProps = {
   onSelect?: (id: string, worldPosition: [number, number, number]) => void;
 };
 
+const SELECTED_COLOR = new THREE.Color("#ffd43b");
+const NORMAL_COLOR = new THREE.Color("#f1bbf8");
+
 export const Bin = memo(function Bin({
   id,
   position,
@@ -42,7 +44,9 @@ export const Bin = memo(function Bin({
   dimmed = false,
 }: BinProps) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshStandardMaterial>(null);
 
+  const { invalidate } = useThree();
   const { registerBin, unregisterBin } = useBinRegistry();
 
   const pointerStart = useRef<{
@@ -64,19 +68,19 @@ export const Bin = memo(function Bin({
     };
   }, [id, registerBin, unregisterBin]);
 
-  const handleSelect = (e: ThreeEvent<TouchEvent>) => {
-    e.stopPropagation();
+  // --------------------------------
+  // Keep material in sync with `selected` prop — covers
+  // deselection, search-result selection, or any selection
+  // path that doesn't go through this bin's own pointer handlers.
+  // --------------------------------
 
-    if (!meshRef.current) {
+  useEffect(() => {
+    if (!materialRef.current) {
       return;
     }
 
-    const worldPosition = new Vector3();
-
-    meshRef.current.getWorldPosition(worldPosition);
-
-    onSelect?.(id, [worldPosition.x, worldPosition.y, worldPosition.z]);
-  };
+    materialRef.current.color.set(selected ? SELECTED_COLOR : NORMAL_COLOR);
+  }, [selected]);
 
   const handlePointerDown = (e: ThreeEvent<TouchEvent>) => {
     e.stopPropagation();
@@ -95,7 +99,6 @@ export const Bin = memo(function Bin({
     }
 
     const dx = e.nativeEvent.pageX - pointerStart.current.x;
-
     const dy = e.nativeEvent.pageY - pointerStart.current.y;
 
     const distanceSquared = dx * dx + dy * dy;
@@ -114,7 +117,6 @@ export const Bin = memo(function Bin({
     }
 
     const worldPosition = new Vector3();
-
     meshRef.current.getWorldPosition(worldPosition);
 
     if (!pointerStart.current) {
@@ -122,6 +124,13 @@ export const Bin = memo(function Bin({
     }
 
     if (!moved.current) {
+      // Paint immediately — don't wait for the `selected` prop
+      // to come back around through React's render cycle.
+      if (materialRef.current) {
+        materialRef.current.color.set(SELECTED_COLOR);
+        invalidate();
+      }
+
       onSelect?.(id, [worldPosition.x, worldPosition.y, worldPosition.z]);
     }
 
@@ -138,6 +147,7 @@ export const Bin = memo(function Bin({
 
   return (
     <mesh
+      visible={!dimmed}
       ref={meshRef}
       position={position}
       onPointerDown={!dimmed ? handlePointerDown : undefined}
@@ -147,6 +157,7 @@ export const Bin = memo(function Bin({
       raycast={dimmed ? () => null : THREE.Mesh.prototype.raycast}
     >
       <meshStandardMaterial
+        ref={materialRef}
         color={selected ? "#ffd43b" : "#f1bbf8"}
         transparent={true}
         opacity={dimmed ? 0.08 : 1}
